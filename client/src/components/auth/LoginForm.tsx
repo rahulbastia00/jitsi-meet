@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const AUTH_INPUT_CLASS =
+  "h-12 rounded-[6px] border border-[#d4cfca] bg-white px-4 py-3 text-[15px] text-[#161513] placeholder:text-[#8a847f] shadow-none outline-none focus-visible:border-[#227e9e] focus-visible:ring-1 focus-visible:ring-[#227e9e]";
+
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address."),
   password: z.string().min(1, "Enter your password."),
@@ -34,17 +37,17 @@ export function LoginForm() {
     <form className="flex flex-col gap-5" onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className="mb-2">
         <p className="mb-3 text-[13px] font-bold text-[#006b8f]">Welcome back</p>
-        <h2 className="font-serif text-[36px] font-normal leading-tight">Sign in to CodeRabbit</h2>
+        <h2 className="font-serif text-[36px] font-normal leading-tight">Sign in to Hrnbyl</h2>
         <div className="mt-5 h-[4px] w-[40px] bg-[#f0cc71]" />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="login-email" className="text-sm font-semibold text-[#161513]">Email</Label>
+        <Label htmlFor="login-email" className="mb-2 block text-[14px] font-semibold text-[#161513]">Email</Label>
         <Input
           id="login-email"
           type="email"
           autoComplete="email"
           placeholder="you@company.com"
-          className="h-11 rounded-[6px] border-[#d4cfca] bg-white px-3 text-sm shadow-none focus-visible:border-[#227e9e] focus-visible:ring-[#227e9e]/20"
+          className={AUTH_INPUT_CLASS}
           aria-invalid={Boolean(errors.email)}
           {...register("email")}
         />
@@ -52,14 +55,14 @@ export function LoginForm() {
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="login-password" className="text-sm font-semibold text-[#161513]">Password</Label>
+          <Label htmlFor="login-password" className="mb-2 block text-[14px] font-semibold text-[#161513]">Password</Label>
           <Link href="/forgot-password" className="text-xs text-[#006b8f]">Forgot password?</Link>
         </div>
         <Input
           id="login-password"
           type="password"
           autoComplete="current-password"
-          className="h-11 rounded-[6px] border-[#d4cfca] bg-white px-3 text-sm shadow-none focus-visible:border-[#227e9e] focus-visible:ring-[#227e9e]/20"
+          className={AUTH_INPUT_CLASS}
           aria-invalid={Boolean(errors.password)}
           {...register("password")}
         />
@@ -68,7 +71,7 @@ export function LoginForm() {
       <Button
         type="submit"
         disabled={isSubmitting}
-        className="h-11 w-full rounded-[4px] bg-[#312d2a] px-4 text-sm font-semibold text-white shadow-none hover:bg-[#47423e]"
+        className="h-11 w-full rounded-[4px] border-0 bg-[#312d2a] px-4 py-[10px] text-[14px] font-medium text-white shadow-none transition-colors hover:bg-[#47423e]"
       >
         {isSubmitting ? "Signing in..." : "Sign In"}
       </Button>

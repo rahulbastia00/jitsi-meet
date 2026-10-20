@@ -27,6 +27,11 @@ type Step = "email" | "otp" | "details";
 type EmailValues = z.infer<typeof emailSchema>;
 type DetailsValues = z.infer<typeof detailsSchema>;
 
+const AUTH_INPUT_CLASS =
+  "h-12 rounded-[6px] border border-[#d4cfca] bg-white px-4 py-3 text-[15px] text-[#161513] placeholder:text-[#8a847f] shadow-none outline-none focus-visible:border-[#227e9e] focus-visible:ring-1 focus-visible:ring-[#227e9e]";
+const AUTH_BUTTON_CLASS =
+  "h-11 w-full rounded-[4px] border-0 bg-[#312d2a] px-4 py-[10px] text-[14px] font-medium text-white shadow-none transition-colors hover:bg-[#47423e]";
+
 function FormError({ message }: { message?: string }) {
   return message ? <p className="text-xs text-[#d63b25]">{message}</p> : null;
 }
@@ -71,8 +76,8 @@ export function SignUpMultiStepForm() {
         <form className="flex flex-col gap-5" onSubmit={emailForm.handleSubmit(validateEmail)} noValidate>
           <Header title="Create your account" description="Start with your work email. We’ll send a verification code to confirm it." />
           <div className="flex flex-col gap-2">
-            <Label htmlFor="signup-email" className="text-sm font-semibold text-[#161513]">Work email</Label>
-            <Input id="signup-email" type="email" autoComplete="email" placeholder="you@company.com" className="auth-input" {...emailForm.register("email")} />
+            <Label htmlFor="signup-email" className="mb-2 block text-[14px] font-semibold text-[#161513]">Work email</Label>
+            <Input id="signup-email" type="email" autoComplete="email" placeholder="you@company.com" className={AUTH_INPUT_CLASS} {...emailForm.register("email")} />
             <FormError message={emailForm.formState.errors.email?.message} />
           </div>
           <SubmitButton label="Validate Email" />
@@ -86,16 +91,16 @@ export function SignUpMultiStepForm() {
             <button type="button" onClick={() => setStep("email")} className="ml-3 shrink-0 text-xs font-semibold text-[#006b8f]">Edit</button>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="signup-otp" className="text-sm font-semibold text-[#161513]">Verification code</Label>
+            <Label htmlFor="signup-otp" className="mb-2 block text-[14px] font-semibold text-[#161513]">Verification code</Label>
             <InputOTP id="signup-otp" maxLength={6} value={otp} onChange={setOtp} className="w-full" containerClassName="w-full justify-between">
               <InputOTPGroup className="w-full justify-between gap-2 rounded-none">
                 {Array.from({ length: 6 }, (_, index) => (
-                  <InputOTPSlot key={index} index={index} className="h-12 w-full rounded-[6px] border border-[#d4cfca] bg-white text-base shadow-none first:rounded-[6px] last:rounded-[6px]" />
+                  <InputOTPSlot key={index} index={index} className="h-12 w-12 rounded-[6px] border border-[#d4cfca] bg-white text-[18px] font-medium text-[#161513] shadow-none first:rounded-[6px] last:rounded-[6px] data-[active=true]:border-[#227e9e] data-[active=true]:ring-1 data-[active=true]:ring-[#227e9e]" />
                 ))}
               </InputOTPGroup>
             </InputOTP>
           </div>
-          <Button type="button" onClick={verifyOtp} disabled={otp.length !== 6} className="h-11 w-full rounded-[4px] bg-[#312d2a] text-sm text-white shadow-none hover:bg-[#47423e]">Verify OTP</Button>
+          <Button type="button" onClick={verifyOtp} disabled={otp.length !== 6} className={AUTH_BUTTON_CLASS}>Verify OTP</Button>
           <button type="button" disabled={seconds > 0} onClick={() => setSeconds(30)} className="text-sm text-[#006b8f] disabled:cursor-not-allowed disabled:text-[#aea8a2]">
             {seconds > 0 ? `Resend code in 00:${String(seconds).padStart(2, "0")}` : "Resend Code"}
           </button>
@@ -141,13 +146,13 @@ function Header({ title, description }: { title: string; description: string }) 
 function PasswordField({ id, label, register, error }: { id: string; label: string; register: UseFormRegisterReturn; error?: string }) {
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor={id} className="text-sm font-semibold text-[#161513]">{label}</Label>
-      <Input id={id} type="password" autoComplete="new-password" className="auth-input" {...register} />
+      <Label htmlFor={id} className="mb-2 block text-[14px] font-semibold text-[#161513]">{label}</Label>
+      <Input id={id} type="password" autoComplete="new-password" className={AUTH_INPUT_CLASS} {...register} />
       <FormError message={error} />
     </div>
   );
 }
 
 function SubmitButton({ label }: { label: string }) {
-  return <Button type="submit" className="h-11 w-full rounded-[4px] bg-[#312d2a] px-4 text-sm font-semibold text-white shadow-none hover:bg-[#47423e]">{label}</Button>;
+  return <Button type="submit" className={AUTH_BUTTON_CLASS}>{label}</Button>;
 }
