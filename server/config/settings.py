@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'corsheaders',
     # Local apps
     'authentication.apps.AuthenticationConfig',
+    'teams.apps.TeamsConfig',
+    'meetings.apps.MeetingsConfig',
 ]
 
 MIDDLEWARE = [
@@ -202,3 +204,10 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@example.com')
 # Trusted Proxy Configuration for Client IP resolution
 # Set NUM_PROXIES to the number of reverse proxies (e.g. 1 behind Nginx/Cloudflare)
 NUM_PROXIES = int(os.getenv('NUM_PROXIES', '0'))
+
+# Jitsi Meet Integration
+JITSI_APP_ID = "django_app"
+JITSI_APP_SECRET = os.getenv("JITSI_APP_SECRET", "your_secure_shared_jwt_secret_change_me")
+JITSI_DOMAIN = os.getenv("JITSI_DOMAIN", "meet.example.com")
+JITSI_APP_ISSUER = os.getenv("JITSI_APP_ISSUER", "django_backend")
+JITSI_APP_AUDIENCE = os.getenv("JITSI_APP_AUDIENCE", "jitsi_meet")

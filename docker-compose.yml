@@ -1,0 +1,29 @@
+# Root Docker Compose configuration for Jitsi Meet & Prosody JWT Authentication
+services:
+  prosody:
+    image: ghcr.io/jitsi/prosody:unstable
+    restart: unless-stopped
+    environment:
+      - ENABLE_AUTH=1
+      - AUTH_TYPE=jwt
+      - JWT_APP_ID=django_app
+      - JWT_APP_SECRET=your_secure_shared_jwt_secret_change_me
+      - JWT_ACCEPTED_ISSUERS=django_backend
+      - JWT_ACCEPTED_AUDIENCES=jitsi_meet
+
+  jicofo:
+    image: ghcr.io/jitsi/jicofo:unstable
+    restart: unless-stopped
+    environment:
+      - ENABLE_AUTH=1
+      - AUTH_TYPE=jwt
+
+  jvb:
+    image: ghcr.io/jitsi/jvb:unstable
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/jitsi/web:unstable
+    restart: unless-stopped
+    environment:
+      - ENABLE_AUTH=1

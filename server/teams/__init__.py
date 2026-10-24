@@ -1,0 +1,1 @@
+"""Teams and Organizations application."""
