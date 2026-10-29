@@ -1,32 +1,34 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { AuthProvider } from "@/contexts/auth-context";
+import { MeetingProvider } from "@/contexts/meeting-context";
+import { Toaster } from "@/components/ui/sonner";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "CodeRabbit | Better code, together",
-  description: "AI-powered code reviews for modern engineering teams.",
+  title: "AI Meeting Platform | Enterprise Agentic Meetings",
+  description:
+    "Enterprise agentic meeting platform with Jitsi integration, Linear-style team roster, interactive calendar, and live meetings.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html
-      lang="en"
-      className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable)}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={cn("h-full", "antialiased", "font-sans", inter.variable)}>
+      <body className="min-h-full flex flex-col bg-[#fbf9f8] text-[#161513]">
+        <AuthProvider>
+          <MeetingProvider>
+            {children}
+            <Toaster position="top-right" />
+          </MeetingProvider>
+        </AuthProvider>
+      </body>
     </html>
   );
 }

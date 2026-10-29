@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 import dj_database_url
@@ -38,6 +39,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     # Local apps
+    'core.apps.CoreConfig',
     'authentication.apps.AuthenticationConfig',
     'teams.apps.TeamsConfig',
     'meetings.apps.MeetingsConfig',
@@ -77,7 +79,14 @@ ASGI_APPLICATION = 'config.asgi.application'
 # Database configuration
 # Uses Neon PostgreSQL if DATABASE_URL is set, otherwise falls back to SQLite for local tests.
 DATABASE_URL = os.getenv('DATABASE_URL')
-if DATABASE_URL:
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
+    }
+elif DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -198,7 +207,7 @@ CORS_ALLOW_CREDENTIALS = True
 REDIS_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/0')
 
 # Email Delivery Configuration (Resend)
-RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
+RESEND_API_KEY = '' if 'test' in sys.argv else os.getenv('RESEND_API_KEY', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@example.com')
 
 # Trusted Proxy Configuration for Client IP resolution

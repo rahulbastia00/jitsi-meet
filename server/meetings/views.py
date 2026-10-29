@@ -506,7 +506,14 @@ class CalendarView(APIView):
                 "id": str(m.id),
                 "title": m.title,
                 "type": m.meeting_type,
-                "host_name": m.host.email,
+                "status": m.status,
+                "host_id": str(m.host.id),
+                "host_name": f"{m.host.first_name} {m.host.last_name}".strip() or m.host.email,
+                "jitsi_room_name": m.jitsi_room_name,
+                "scheduled_start": m.scheduled_start.isoformat() if m.scheduled_start else None,
+                "scheduled_end": m.scheduled_end.isoformat() if m.scheduled_end else None,
+                "actual_started_at": m.actual_started_at.isoformat() if m.actual_started_at else None,
+                "actual_ended_at": m.actual_ended_at.isoformat() if m.actual_ended_at else None,
                 "duration_seconds": m.total_duration_secs,
                 "attendees": attendee_list,
             })
@@ -518,6 +525,7 @@ class CalendarView(APIView):
                 "year": year,
                 "month": month,
                 "days": sorted_days,
+                "meetings": MeetingSerializer(meetings, many=True).data,
             },
             status=status.HTTP_200_OK,
         )

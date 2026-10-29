@@ -1,5 +1,6 @@
 import json
 import logging
+from django.conf import settings
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -11,6 +12,7 @@ from rest_framework.views import APIView
 from authentication.services import get_redis_client
 from .models import Organization, OrganizationMember, OrganizationTeam
 from .serializers import (
+    InviteMemberSerializer,
     InviteTeamInstantSerializer,
     MoveMemberTeamSerializer,
     OrganizationMemberSerializer,
@@ -394,3 +396,139 @@ class TeamInviteInstantView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class InviteMemberView(APIView):
+    """
+    POST /api/organizations/{org_id}/invite-member/
+    Invites a member to the organization:
+    Accepts: { "email": "...", "first_name": "...", "last_name": "...", "team_id": "..." }
+    Sets membership status to 'invited' and dispatches invitation link via Resend or logs to console.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, org_id):
+        org = get_object_or_404(Organization, id=org_id)
+        caller_membership = OrganizationMember.objects.filter(
+            org=org,
+            user=request.user,
+            status='active',
+        ).first()
+
+        if (not caller_membership or not caller_membership.is_owner) and not request.user.is_superuser:
+            return Response(
+                {"error": "Only organization owners can invite members."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = InviteMemberSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        email = data['email'].strip().lower()
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+        team_id = data.get('team_id')
+
+        team = None
+        if team_id:
+            team = OrganizationTeam.objects.filter(id=team_id, org=org).first()
+            if not team:
+                return Response(
+                    {"error": "Team does not belong to this organization or does not exist."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        with transaction.atomic():
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'is_active': True,
+                }
+            )
+            if not created:
+                updated_fields = []
+                if first_name and not user.first_name:
+                    user.first_name = first_name
+                    updated_fields.append('first_name')
+                if last_name and not user.last_name:
+                    user.last_name = last_name
+                    updated_fields.append('last_name')
+                if updated_fields:
+                    user.save(update_fields=updated_fields)
+
+            member, member_created = OrganizationMember.objects.get_or_create(
+                org=org,
+                user=user,
+                defaults={
+                    'team': team,
+                    'status': 'invited',
+                    'can_create_meeting': True,
+                    'can_delete_meeting': False,
+                    'can_use_ai': True,
+                }
+            )
+            if not member_created:
+                if team and member.team != team:
+                    member.team = team
+                    member.save(update_fields=['team'])
+
+        # Dispatch invitation email via Resend or log to console
+        invite_url = f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')}/signup?email={email}&org_id={org.id}"
+        logger.info("[INVITATION DISPATCH] Organization invitation sent to %s for workspace %s. Link: %s", email, org.name, invite_url)
+        print(f"[INVITATION DISPATCH] Email: {email} | Org: {org.name} | Link: {invite_url}")
+
+        resend_api_key = getattr(settings, 'RESEND_API_KEY', None)
+        if resend_api_key:
+            try:
+                import resend
+                resend.api_key = resend_api_key
+                resend.Emails.send({
+                    "from": getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com'),
+                    "to": [email],
+                    "subject": f"You're invited to join {org.name}",
+                    "html": f"<p>Hello {first_name or email},</p><p>You have been invited to join <strong>{org.name}</strong> on the AI Meeting Platform.</p><p><a href='{invite_url}'>Click here to join</a></p>",
+                })
+            except Exception as e:
+                logger.warning("Failed to send invitation via Resend: %s", e)
+
+        response_serializer = OrganizationMemberSerializer(member)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class MemberDeleteView(APIView):
+    """
+    DELETE /api/organizations/{org_id}/members/{member_id}/
+    Removes a member from the organization (disabled for owner).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, org_id, member_id):
+        org = get_object_or_404(Organization, id=org_id)
+        caller_membership = OrganizationMember.objects.filter(
+            org=org,
+            user=request.user,
+            status='active',
+        ).first()
+
+        if (not caller_membership or not caller_membership.is_owner) and not request.user.is_superuser:
+            return Response(
+                {"error": "Only organization owners can remove members."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        target_member = get_object_or_404(OrganizationMember, id=member_id, org=org)
+        if target_member.is_owner:
+            return Response(
+                {"error": "Cannot remove the organization owner."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        target_member.delete()
+        return Response({"message": "Member removed successfully."}, status=status.HTTP_200_OK)
+

@@ -7,6 +7,7 @@ from .views import (
     RefreshTokenView,
     LogoutView,
     CSRFTokenView,
+    MeProfileView,
 )
 
 app_name = 'authentication'
@@ -19,4 +20,6 @@ urlpatterns = [
     path('refresh/', RefreshTokenView.as_view(), name='refresh'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('csrf/', CSRFTokenView.as_view(), name='csrf'),
+    path('me/', MeProfileView.as_view(), name='me'),
 ]
+

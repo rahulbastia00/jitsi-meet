@@ -11,8 +11,18 @@ class UserBasicSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = ['id', 'email']
-        read_only_fields = ['id', 'email']
+        fields = ['id', 'email', 'first_name', 'last_name']
+        read_only_fields = ['id', 'email', 'first_name', 'last_name']
+
+
+class InviteMemberSerializer(serializers.Serializer):
+    """
+    Validates organization member invitation payload.
+    """
+    email = serializers.EmailField()
+    first_name = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
+    last_name = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
+    team_id = serializers.UUIDField(required=False, allow_null=True, default=None)
 
 
 class OrganizationTeamSerializer(serializers.ModelSerializer):

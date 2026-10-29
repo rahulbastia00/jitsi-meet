@@ -1,20 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
-
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 const emailSchema = z.object({ email: z.string().email("Enter a valid email address.") });
 const detailsSchema = z
   .object({
-    password: z.string().min(8, "Use at least 8 characters."),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    password: z
+      .string()
+      .min(8, "Use at least 8 characters.")
+      .regex(/[A-Z]/, "Include at least one uppercase letter.")
+      .regex(/[a-z]/, "Include at least one lowercase letter.")
+      .regex(/[0-9]/, "Include at least one digit.")
+      .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, "Include at least one special character."),
     confirmPassword: z.string(),
     terms: z.boolean().refine((value) => value, "Accept the terms to continue."),
   })
@@ -37,17 +48,24 @@ function FormError({ message }: { message?: string }) {
 }
 
 export function SignUpMultiStepForm() {
+  const router = useRouter();
+  const { refreshUser } = useAuth();
   const [step, setStep] = useState<Step>("email");
   const [verifiedEmail, setVerifiedEmail] = useState("");
+  const [verificationTicket, setVerificationTicket] = useState("");
   const [otp, setOtp] = useState("");
   const [seconds, setSeconds] = useState(30);
+  const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const emailForm = useForm<EmailValues>({
     resolver: zodResolver(emailSchema),
     defaultValues: { email: "" },
   });
+
   const detailsForm = useForm<DetailsValues>({
     resolver: zodResolver(detailsSchema),
-    defaultValues: { password: "", confirmPassword: "", terms: false },
+    defaultValues: { firstName: "", lastName: "", password: "", confirmPassword: "", terms: false },
   });
 
   useEffect(() => {
@@ -56,33 +74,89 @@ export function SignUpMultiStepForm() {
     return () => window.clearInterval(timer);
   }, [seconds, step]);
 
-  const validateEmail = ({ email }: EmailValues) => {
-    setVerifiedEmail(email);
-    setSeconds(30);
-    setStep("otp");
+  const handleSendEmail = async ({ email }: EmailValues) => {
+    setServerError("");
+    setLoading(true);
+    try {
+      await api.auth.sendOtp(email);
+      setVerifiedEmail(email);
+      setSeconds(30);
+      setStep("otp");
+      toast.success("Verification code dispatched to your email");
+    } catch (err: any) {
+      setServerError(err.message || "Failed to send verification code.");
+      toast.error(err.message || "Request failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const verifyOtp = () => {
-    if (otp.length === 6) setStep("details");
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) return;
+    setServerError("");
+    setLoading(true);
+    try {
+      const res = await api.auth.verifyOtp(verifiedEmail, otp);
+      setVerificationTicket(res.verification_ticket);
+      setStep("details");
+      toast.success("Email verified successfully");
+    } catch (err: any) {
+      setServerError(err.message || "Invalid or expired verification code.");
+      toast.error(err.message || "Verification failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const createAccount = async () => {
-    await Promise.resolve();
+  const handleCreateAccount = async (values: DetailsValues) => {
+    setServerError("");
+    setLoading(true);
+    try {
+      await api.auth.register({
+        email: verifiedEmail,
+        first_name: values.firstName?.trim() || "",
+        last_name: values.lastName?.trim() || "",
+        password: values.password,
+        password_confirm: values.confirmPassword,
+        verification_ticket: verificationTicket,
+        terms_accepted: values.terms,
+      });
+
+      // Automatically sign in upon registration
+      await api.auth.login(verifiedEmail, values.password);
+      await refreshUser();
+      toast.success("Account created and logged in!");
+      router.push("/meetings");
+    } catch (err: any) {
+      setServerError(err.message || "Failed to create account.");
+      toast.error(err.message || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex flex-col gap-5">
+      {serverError && (
+        <div className="rounded-[4px] border border-red-200 bg-red-50 p-3 text-xs text-red-600">
+          {serverError}
+        </div>
+      )}
+
       {step === "email" && (
-        <form className="flex flex-col gap-5" onSubmit={emailForm.handleSubmit(validateEmail)} noValidate>
+        <form className="flex flex-col gap-5" onSubmit={emailForm.handleSubmit(handleSendEmail)} noValidate>
           <Header title="Create your account" description="Start with your work email. We’ll send a verification code to confirm it." />
           <div className="flex flex-col gap-2">
             <Label htmlFor="signup-email" className="mb-2 block text-[14px] font-semibold text-[#161513]">Work email</Label>
             <Input id="signup-email" type="email" autoComplete="email" placeholder="you@company.com" className={AUTH_INPUT_CLASS} {...emailForm.register("email")} />
             <FormError message={emailForm.formState.errors.email?.message} />
           </div>
-          <SubmitButton label="Validate Email" />
+          <Button type="submit" disabled={loading} className={AUTH_BUTTON_CLASS}>
+            {loading ? "Sending Code..." : "Validate Email"}
+          </Button>
         </form>
       )}
+
       {step === "otp" && (
         <div className="flex flex-col gap-5">
           <Header title="Check your inbox" description="Enter the six-digit code we sent to your email." />
@@ -100,33 +174,51 @@ export function SignUpMultiStepForm() {
               </InputOTPGroup>
             </InputOTP>
           </div>
-          <Button type="button" onClick={verifyOtp} disabled={otp.length !== 6} className={AUTH_BUTTON_CLASS}>Verify OTP</Button>
-          <button type="button" disabled={seconds > 0} onClick={() => setSeconds(30)} className="text-sm text-[#006b8f] disabled:cursor-not-allowed disabled:text-[#aea8a2]">
+          <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || loading} className={AUTH_BUTTON_CLASS}>
+            {loading ? "Verifying..." : "Verify OTP"}
+          </Button>
+          <button type="button" disabled={seconds > 0 || loading} onClick={() => handleSendEmail({ email: verifiedEmail })} className="text-sm text-[#006b8f] disabled:cursor-not-allowed disabled:text-[#aea8a2]">
             {seconds > 0 ? `Resend code in 00:${String(seconds).padStart(2, "0")}` : "Resend Code"}
           </button>
         </div>
       )}
+
       {step === "details" && (
-        <form className="flex flex-col gap-5" onSubmit={detailsForm.handleSubmit(createAccount)} noValidate>
-          <Header title="Finish setting up" description="Create a password and you’re ready to review better code." />
+        <form className="flex flex-col gap-5" onSubmit={detailsForm.handleSubmit(handleCreateAccount)} noValidate>
+          <Header title="Finish setting up" description="Provide your name and create a password." />
           <div className="rounded-[6px] border border-[#e4e1dd] bg-[#fbf9f8] px-3 py-2 text-sm text-[#68635d]">
             Verified email: <strong className="font-medium text-[#161513]">{verifiedEmail}</strong>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="signup-first-name" className="text-xs font-semibold text-[#161513]">First Name</Label>
+              <Input id="signup-first-name" placeholder="John" className={AUTH_INPUT_CLASS} {...detailsForm.register("firstName")} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="signup-last-name" className="text-xs font-semibold text-[#161513]">Last Name</Label>
+              <Input id="signup-last-name" placeholder="Doe" className={AUTH_INPUT_CLASS} {...detailsForm.register("lastName")} />
+            </div>
+          </div>
+
           <PasswordField id="signup-password" label="Password" register={detailsForm.register("password")} error={detailsForm.formState.errors.password?.message} />
           <PasswordField id="signup-confirm-password" label="Confirm password" register={detailsForm.register("confirmPassword")} error={detailsForm.formState.errors.confirmPassword?.message} />
+
           <div className="flex items-start gap-2">
             <input id="terms" type="checkbox" className="mt-1 size-4 accent-[#312d2a]" {...detailsForm.register("terms")} />
             <Label htmlFor="terms" className="text-xs leading-5 text-[#68635d]">
-              I agree to the <Link href="/terms" className="text-[#006b8f]">Terms and Conditions</Link> and <Link href="/privacy" className="text-[#006b8f]">Privacy Policy</Link>.
+              I agree to the <Link href="#" className="text-[#006b8f]">Terms and Conditions</Link> and <Link href="#" className="text-[#006b8f]">Privacy Policy</Link>.
             </Label>
           </div>
           <FormError message={detailsForm.formState.errors.terms?.message} />
-          <FormError message={detailsForm.formState.errors.root?.message} />
-          <SubmitButton label="Create Account" />
+          <Button type="submit" disabled={loading} className={AUTH_BUTTON_CLASS}>
+            {loading ? "Creating Account..." : "Create Account & Enter Platform"}
+          </Button>
         </form>
       )}
+
       <p className="border-t border-[#e9e7e4] pt-5 text-center text-sm text-[#68635d]">
-        Already have an account? <Link href="/login" className="text-[#006b8f]">Log in</Link>
+        Already have an account? <Link href="/login" className="text-[#006b8f] font-semibold hover:underline">Log in</Link>
       </p>
     </div>
   );
@@ -151,8 +243,4 @@ function PasswordField({ id, label, register, error }: { id: string; label: stri
       <FormError message={error} />
     </div>
   );
-}
-
-function SubmitButton({ label }: { label: string }) {
-  return <Button type="submit" className={AUTH_BUTTON_CLASS}>{label}</Button>;
 }

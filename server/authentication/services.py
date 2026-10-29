@@ -7,6 +7,9 @@ from django.http import HttpRequest, HttpResponse
 import redis
 import resend
 
+import time
+import threading
+
 logger = logging.getLogger(__name__)
 
 # Constants
@@ -14,7 +17,7 @@ OTP_EXPIRATION_SECONDS = 300       # 5 minutes
 OTP_THROTTLE_SECONDS = 60          # 60-second cooldown
 OTP_MAX_ATTEMPTS = 3               # Maximum failed attempts
 TICKET_EXPIRATION_SECONDS = 900    # 15 minutes
-IP_OTP_LIMIT = 5                   # Max 5 OTP requests per hour per IP
+IP_OTP_LIMIT = 5                   # Max 5 OTP requests per hour per IP (in production)
 IP_OTP_WINDOW_SECONDS = 3600       # 1 hour
 LOGIN_FAIL_LIMIT_IP = 10           # Max 10 failed logins per 15 min per IP
 LOGIN_FAIL_LIMIT_ACCOUNT = 5       # Max 5 failed logins per 15 min per email
@@ -31,12 +34,166 @@ class EmailServiceError(Exception):
     pass
 
 
-def get_redis_client() -> redis.Redis:
+class _InMemoryStore:
+    """Thread-safe in-memory cache mimicking essential Redis operations for development."""
+    def __init__(self):
+        self._data = {}
+        self._expirations = {}
+        self._lock = threading.Lock()
+
+    def _cleanup(self, key):
+        exp = self._expirations.get(key)
+        if exp is not None and time.time() > exp:
+            self._data.pop(key, None)
+            self._expirations.pop(key, None)
+            return True
+        return False
+
+    def ping(self):
+        return True
+
+    def get(self, key):
+        with self._lock:
+            if self._cleanup(key):
+                return None
+            val = self._data.get(key)
+            if val is not None and isinstance(val, str):
+                return val.encode('utf-8')
+            return val
+
+    def set(self, key, value, ex=None):
+        with self._lock:
+            self._data[key] = str(value)
+            if ex:
+                self._expirations[key] = time.time() + ex
+            else:
+                self._expirations.pop(key, None)
+            return True
+
+    def delete(self, *keys):
+        with self._lock:
+            count = 0
+            for k in keys:
+                if k in self._data:
+                    del self._data[k]
+                    self._expirations.pop(k, None)
+                    count += 1
+            return count
+
+    def exists(self, key):
+        with self._lock:
+            if self._cleanup(key):
+                return 0
+            return 1 if key in self._data else 0
+
+    def incr(self, key):
+        with self._lock:
+            if self._cleanup(key):
+                self._data[key] = 0
+            current = int(self._data.get(key, 0)) + 1
+            self._data[key] = current
+            return current
+
+    def expire(self, key, seconds):
+        with self._lock:
+            if key in self._data:
+                self._expirations[key] = time.time() + seconds
+                return True
+            return False
+
+    def hset(self, key, field=None, value=None, mapping=None):
+        with self._lock:
+            self._cleanup(key)
+            if key not in self._data or not isinstance(self._data[key], dict):
+                self._data[key] = {}
+            if mapping:
+                for k, v in mapping.items():
+                    self._data[key][str(k).encode('utf-8')] = str(v).encode('utf-8')
+            if field is not None:
+                self._data[key][str(field).encode('utf-8')] = str(value).encode('utf-8')
+            return True
+
+    def hgetall(self, key):
+        with self._lock:
+            if self._cleanup(key):
+                return {}
+            data = self._data.get(key)
+            if isinstance(data, dict):
+                return data.copy()
+            return {}
+
+    def pipeline(self):
+        return _InMemoryPipeline(self)
+
+
+class _InMemoryPipeline:
+    def __init__(self, store):
+        self.store = store
+        self.commands = []
+
+    def watch(self, *keys):
+        pass
+
+    def unwatch(self):
+        pass
+
+    def multi(self):
+        pass
+
+    def hset(self, *args, **kwargs):
+        self.commands.append(('hset', args, kwargs))
+        return self
+
+    def expire(self, *args, **kwargs):
+        self.commands.append(('expire', args, kwargs))
+        return self
+
+    def set(self, *args, **kwargs):
+        self.commands.append(('set', args, kwargs))
+        return self
+
+    def delete(self, *args, **kwargs):
+        self.commands.append(('delete', args, kwargs))
+        return self
+
+    def incr(self, *args, **kwargs):
+        self.commands.append(('incr', args, kwargs))
+        return self
+
+    def hgetall(self, key):
+        return self.store.hgetall(key)
+
+    def get(self, key):
+        return self.store.get(key)
+
+    def execute(self):
+        results = []
+        for cmd, args, kwargs in self.commands:
+            fn = getattr(self.store, cmd)
+            results.append(fn(*args, **kwargs))
+        self.commands.clear()
+        return results
+
+
+_dev_memory_store = _InMemoryStore()
+
+
+def get_redis_client():
     """
     Returns a configured Redis client instance.
+    In development mode (DEBUG=True), gracefully falls back to an in-memory store
+    if Redis is offline or unreachable.
     """
     redis_url = getattr(settings, 'REDIS_URL', 'redis://127.0.0.1:6379/0')
-    return redis.Redis.from_url(redis_url)
+    try:
+        client = redis.Redis.from_url(redis_url, socket_connect_timeout=1.0)
+        client.ping()
+        return client
+    except Exception as exc:
+        if getattr(settings, 'DEBUG', False):
+            logger.warning("Redis is unreachable (%s); using in-memory store fallback.", exc)
+            return _dev_memory_store
+        raise RedisServiceUnavailableError("Redis service is unreachable.") from exc
 
 
 def get_client_ip(request: HttpRequest) -> str:

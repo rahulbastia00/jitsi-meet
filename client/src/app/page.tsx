@@ -1,29 +1,31 @@
-const products = [
-  { name: "Code Reviews", description: "AI reviews that understand your codebase" },
-  { name: "CodeRabbit Autofix", description: "Resolve issues with one click" },
-  { name: "Security", description: "Find vulnerabilities before they ship" },
-  { name: "Jira Integration", description: "Turn feedback into focused tickets" },
-  { name: "GitHub", description: "Review every pull request automatically" },
-  { name: "GitLab", description: "Bring intelligence to your merge requests" },
-  { name: "Enterprise", description: "Governance for teams at scale" },
-  { name: "Resources", description: "Guides for better code" },
+import Link from "next/link";
+
+const features = [
+  { name: "Instant Conferences", description: "Zero-latency Jitsi video rooms with host moderator controls" },
+  { name: "Linear-Style Roster", description: "Sprint Backlog member table with granular AWS IAM policy controls" },
+  { name: "Time-Grid Calendar", description: "Interactive schedule grid synchronized with monthly calendar queries" },
+  { name: "Floating Mini-Player", description: "Docked 320x480px portrait player with Document Picture-in-Picture" },
+  { name: "Notification Drawer", description: "Slide-over right rail drawer with one-click live call termination" },
+  { name: "GitHub Settings", description: "Two-column workspace preferences with 1px hairline rules" },
+  { name: "Enterprise Auth", description: "HttpOnly secure cookie authentication with email verification OTP" },
+  { name: "Agentic AI Tools", description: "Automated synthesis of action items and session transcripts" },
 ];
 
 const benefits = [
   {
     number: "01",
-    title: "Ship with confidence",
-    copy: "Catch bugs, security risks, and maintainability issues before they become production problems.",
+    title: "Governed video collaboration",
+    copy: "Control who can initiate meetings, manage participants, or invoke AI with AWS IAM-style granular permissions.",
   },
   {
     number: "02",
-    title: "Give developers time back",
-    copy: "CodeRabbit handles the first pass so your team can spend more time on the work that moves the product forward.",
+    title: "Multitask while in session",
+    copy: "Keep meeting context alive in a floating docked player or native desktop Picture-in-Picture overlay.",
   },
   {
     number: "03",
-    title: "Improve every review",
-    copy: "Contextual suggestions get smarter with your repository, your conventions, and every conversation.",
+    title: "Enterprise warm-neutral design",
+    copy: "Built strictly following the Oracle design system with zero shadows, 4px border radii, and bookish Georgia typography.",
   },
 ];
 
@@ -36,27 +38,23 @@ export default function Home() {
     <main>
       <header className="masthead">
         <div className="shell masthead-inner">
-          <button className="menu-button" aria-label="Open menu">
-            <span />
-            <span />
-          </button>
-          <a className="wordmark" href="#" aria-label="CodeRabbit home">
+          <Link className="wordmark" href="/" aria-label="AI Meeting Platform home">
             <span className="wordmark-mark">◒</span>
-            <span>CodeRabbit</span>
-          </a>
+            <span>Hrnbyl Meetings</span>
+          </Link>
           <nav className="main-nav" aria-label="Main navigation">
-            <a href="#product">Product</a>
-            <a href="#why-coderabbit">Why CodeRabbit</a>
-            <a href="#resources">Resources</a>
-            <a href="#enterprise">Enterprise</a>
+            <Link href="/meetings">Overview</Link>
+            <Link href="/meetings/teams">Teams</Link>
+            <Link href="/meetings/calendar">Calendar</Link>
+            <Link href="/settings">Settings</Link>
           </nav>
           <div className="masthead-actions">
-            <label className="search">
-              <span className="search-icon">⌕</span>
-              <input aria-label="Search" placeholder="Search" />
-            </label>
-            <a className="text-link" href="#login">Log in</a>
-            <a className="button button-small" href="#get-started">Get started <Arrow /></a>
+            <Link className="text-link" href="/login">
+              Log in
+            </Link>
+            <Link className="button button-small" href="/signup">
+              Get started <Arrow />
+            </Link>
           </div>
         </div>
       </header>
@@ -64,49 +62,64 @@ export default function Home() {
       <section className="hero-band">
         <div className="hero-pattern" />
         <div className="shell hero-content">
-          <p className="eyebrow">AI code reviews for modern engineering teams</p>
-          <h1>Make every pull request<br /><em>remarkable.</em></h1>
+          <p className="eyebrow">Enterprise Agentic Meeting Platform</p>
+          <h1>
+            Engineered for high-focus<br />
+            <em>collaboration.</em>
+          </h1>
           <div className="gold-rule" />
           <p className="hero-lead">
-            CodeRabbit gives your team an expert review on every change, so you can
-            move faster without compromising quality.
+            Integrated Jitsi videobridge, Linear-style sprint backlog team roster,
+            interactive time-grid calendar, and desktop Picture-in-Picture.
           </p>
           <div className="hero-actions">
-            <a className="button" href="#get-started">Start reviewing for free <Arrow /></a>
-            <a className="button button-outline" href="#demo">See how it works <Arrow /></a>
+            <Link className="button" href="/meetings">
+              Enter Workspace <Arrow />
+            </Link>
+            <Link className="button button-outline" href="/signup">
+              Create Free Account <Arrow />
+            </Link>
           </div>
-          <p className="hero-note">No credit card required · Works with GitHub and GitLab</p>
+          <p className="hero-note">Enterprise-grade security · Zero drop shadows · AWS IAM governance</p>
         </div>
       </section>
 
       <section className="product-nav" id="product">
         <div className="shell">
-          <p className="section-kicker">Explore CodeRabbit</p>
+          <p className="section-kicker">Integrated Features</p>
           <div className="product-grid">
-            {products.map((product, index) => (
-              <a className={`nav-tile${index === 0 ? " nav-tile-active" : ""}`} href="#get-started" key={product.name}>
-                <span className="nav-tile-name">{product.name}</span>
-                <span className="nav-tile-copy">{product.description}</span>
+            {features.map((item, index) => (
+              <Link
+                className={`nav-tile${index === 0 ? " nav-tile-active" : ""}`}
+                href="/meetings"
+                key={item.name}
+              >
+                <span className="nav-tile-name">{item.name}</span>
+                <span className="nav-tile-copy">{item.description}</span>
                 <Arrow />
-              </a>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="section section-soft" id="why-coderabbit">
+      <section className="section section-soft" id="why">
         <div className="shell intro-grid">
           <div>
-            <p className="section-kicker">A better way to review code</p>
-            <h2>Less time reviewing.<br /><span>More time building.</span></h2>
+            <p className="section-kicker">Architectural Excellence</p>
+            <h2>
+              Less friction.<br />
+              <span>More focus.</span>
+            </h2>
           </div>
           <div className="intro-copy">
             <p>
-              Great software is built by teams who care about the details. CodeRabbit
-              brings that care to every pull request with actionable, context-aware
-              feedback in the flow of work.
+              Built with Next.js App Router, Tailwind CSS, shadcn/ui base-mira tokens,
+              and a Django REST backend powered by SimpleJWT HttpOnly cookies.
             </p>
-            <a className="inline-link" href="#get-started">Meet your new review partner <Arrow /></a>
+            <Link className="inline-link" href="/meetings/teams">
+              Explore Team Management <Arrow />
+            </Link>
           </div>
         </div>
       </section>
@@ -115,10 +128,10 @@ export default function Home() {
         <div className="shell">
           <div className="section-heading-row">
             <div>
-              <p className="section-kicker">Built for the whole team</p>
-              <h2>Quality is a team sport.</h2>
+              <p className="section-kicker">Design Foundations</p>
+              <h2>Structured for clarity.</h2>
             </div>
-            <p className="section-summary">One intelligent layer across your entire development workflow.</p>
+            <p className="section-summary">Warm neutral ladder depth without synthetic box shadows.</p>
           </div>
           <div className="benefit-grid">
             {benefits.map((benefit) => (
@@ -126,7 +139,9 @@ export default function Home() {
                 <span className="benefit-number">{benefit.number}</span>
                 <h3>{benefit.title}</h3>
                 <p>{benefit.copy}</p>
-                <a className="card-link" href="#get-started">Learn more <Arrow /></a>
+                <Link className="card-link" href="/meetings">
+                  View in platform <Arrow />
+                </Link>
               </article>
             ))}
           </div>
@@ -135,8 +150,10 @@ export default function Home() {
 
       <section className="teal-band">
         <div className="shell teal-inner">
-          <p className="section-kicker">Trusted by developers everywhere</p>
-          <p className="teal-statement">From first commit to final deploy, <strong>ship your best work.</strong></p>
+          <p className="section-kicker">High-Performance Videoconferencing</p>
+          <p className="teal-statement">
+            Docked 320×480px floating player with <strong>native Picture-in-Picture window support.</strong>
+          </p>
         </div>
       </section>
 
@@ -144,26 +161,30 @@ export default function Home() {
         <div className="shell forest-inner">
           <div>
             <p className="section-kicker">Ready when you are</p>
-            <h2>Build boldly.<br />Review brilliantly.</h2>
+            <h2>Launch your session.<br />Collaborate seamlessly.</h2>
           </div>
           <div className="forest-cta">
-            <p>Join thousands of teams using CodeRabbit to make software better, one review at a time.</p>
-            <a className="button button-inverse" href="#get-started">Get started for free <Arrow /></a>
+            <p>Experience the modern agentic meeting platform with live synchronization.</p>
+            <Link className="button button-inverse" href="/meetings">
+              Open Meetings App <Arrow />
+            </Link>
           </div>
         </div>
       </section>
 
       <footer className="footer" id="resources">
         <div className="shell footer-inner">
-          <a className="wordmark footer-mark" href="#"> <span className="wordmark-mark">◒</span> CodeRabbit</a>
+          <Link className="wordmark footer-mark" href="/">
+            <span className="wordmark-mark">◒</span> Hrnbyl Meetings
+          </Link>
           <div className="footer-links">
-            <a href="#product">Product</a>
-            <a href="#enterprise">Enterprise</a>
-            <a href="#resources">Resources</a>
-            <a href="#privacy">Privacy</a>
-            <a href="#terms">Terms</a>
+            <Link href="/meetings">Meetings</Link>
+            <Link href="/meetings/teams">Teams</Link>
+            <Link href="/meetings/calendar">Calendar</Link>
+            <Link href="/settings">Settings</Link>
+            <Link href="/login">Login</Link>
           </div>
-          <p>© 2025 CodeRabbit. Better code, together.</p>
+          <p>© 2026 Hrnbyl. All rights reserved.</p>
         </div>
       </footer>
     </main>

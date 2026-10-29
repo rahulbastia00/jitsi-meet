@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.settings import api_settings
@@ -19,6 +19,8 @@ from .serializers import (
     VerifyOTPSerializer,
     RegisterSerializer,
     LoginSerializer,
+    UserSerializer,
+    UpdateProfileSerializer,
 )
 from .services import (
     RedisServiceUnavailableError,
@@ -170,9 +172,13 @@ class RegisterView(APIView):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
+                first_name = serializer.validated_data.get('first_name', '').strip()
+                last_name = serializer.validated_data.get('last_name', '').strip()
                 User.objects.create_user(
                     email=email,
                     password=password,
+                    first_name=first_name,
+                    last_name=last_name,
                     terms_accepted=True,
                     terms_accepted_at=timezone.now(),
                 )
@@ -243,6 +249,8 @@ class LoginView(APIView):
                     'user': {
                         'id': str(user.id),
                         'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
                     },
                 },
                 status=status.HTTP_200_OK,
@@ -352,3 +360,28 @@ class CSRFTokenView(APIView):
             {'detail': 'CSRF cookie set.'},
             status=status.HTTP_200_OK,
         )
+
+
+class MeProfileView(APIView):
+    """
+    GET /api/auth/me/
+    PATCH /api/auth/me/
+    Retrieve and update profile details for the authenticated user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        serializer = UpdateProfileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        if 'first_name' in serializer.validated_data:
+            user.first_name = serializer.validated_data['first_name'].strip()
+        if 'last_name' in serializer.validated_data:
+            user.last_name = serializer.validated_data['last_name'].strip()
+        user.save(update_fields=['first_name', 'last_name'])
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+

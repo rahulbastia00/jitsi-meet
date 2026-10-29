@@ -24,6 +24,20 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=255,
         help_text=_('Primary email address used for login and notifications.'),
     )
+    first_name = models.CharField(
+        _('first name'),
+        max_length=64,
+        blank=True,
+        default="",
+        help_text=_('User first name.'),
+    )
+    last_name = models.CharField(
+        _('last name'),
+        max_length=64,
+        blank=True,
+        default="",
+        help_text=_('User last name.'),
+    )
     terms_accepted = models.BooleanField(
         _('terms accepted'),
         default=False,

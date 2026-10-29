@@ -39,6 +39,8 @@ class RegisterSerializer(serializers.Serializer):
     confirmation match, explicit terms acceptance, and verification ticket.
     """
     email = serializers.EmailField()
+    first_name = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
+    last_name = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
     password = serializers.CharField(write_only=True, min_length=8, max_length=128)
     password_confirm = serializers.CharField(write_only=True, min_length=8, max_length=128)
     terms_accepted = serializers.BooleanField(required=True)
@@ -95,3 +97,23 @@ class LoginSerializer(serializers.Serializer):
 
     def validate_email(self, value: str) -> str:
         return value.strip().lower()
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """
+    Full user profile representation.
+    """
+    class Meta:
+        from django.contrib.auth import get_user_model
+        model = get_user_model()
+        fields = ['id', 'email', 'first_name', 'last_name', 'created_at', 'terms_accepted']
+        read_only_fields = ['id', 'email', 'created_at', 'terms_accepted']
+
+
+class UpdateProfileSerializer(serializers.Serializer):
+    """
+    Validates profile updates (first_name, last_name).
+    """
+    first_name = serializers.CharField(max_length=64, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=64, required=False, allow_blank=True)
+
